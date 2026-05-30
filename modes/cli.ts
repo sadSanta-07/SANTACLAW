@@ -14,7 +14,7 @@ export async function runCliMode() {
         });
 
         if (isCancel(mode) || mode === "back") return;
-        
+
         if (mode === "ask") {
             console.log("ask")
         }

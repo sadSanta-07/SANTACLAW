@@ -1,4 +1,4 @@
-# openclaw
+# santa claw a free personalized alternative for openclaw
 
 To install dependencies:
 
