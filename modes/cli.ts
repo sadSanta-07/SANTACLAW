@@ -5,11 +5,11 @@ import { runAgentMode } from "./agent/orchestrator";
 export async function runCliMode() {
     while (true) {
         const mode = await select({
-            message: "Choose CLI sub-mode",
+            message: "Kya Kaam Karna Hai",
             options: [
-                { value: "agent", label: "Agent Mode" },
-                { value: "plan", label: "Plan Mode" },
-                { value: "ask", label: "Ask Mode" },
+                { value: "agent", label: "Agent Chahiye" },
+                { value: "plan", label: "Planning karni hai" },
+                { value: "ask", label: "Kuch Puchna Hai" },
                 { value: "back", label: "+ Back to main menu" },
             ],
         });
