@@ -6,12 +6,12 @@ import { runAskMode } from "./ask/orchestrator";
 export async function runCliMode() {
     while (true) {
         const mode = await select({
-            message: "Kya Kaam Karna Hai",
+            message: "What are we doing today Boss ?",
             options: [
-                { value: "agent", label: "Agent Chahiye" },
-                { value: "plan", label: "Planning karni hai" },
-                { value: "ask", label: "Kuch Puchna Hai" },
-                { value: "back", label: "+ Back to main menu" },
+                { value: "agent", label: " Build " },
+                { value: "plan", label: " Plan " },
+                { value: "ask", label: " Ask " },
+                { value: "back", label: " Leave " },
             ],
         });
 
@@ -25,11 +25,6 @@ export async function runCliMode() {
         }
         if (mode === "agent") {
             await runAgentMode()
-        }
-
-        if (mode !== 'agent' && mode !== 'plan' && mode !== 'ask') {
-            console.log(chalk.yellow('\nThat mode is not implemented yet.\n'));
-
         }
     }
 }

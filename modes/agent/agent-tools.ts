@@ -107,5 +107,25 @@ export function createAgentTools(executor: ToolExecutor) {
       }),
       execute: async ({ path: p }) => executor.readSkill(p),
     }),
+
+
+    read_multiple_files: tool({
+      description:
+        "Read multiple files in a single operation. Prefer this tool when understanding a feature spanning several files.",
+
+      inputSchema: z.object({
+        paths: z.array(z.string()),
+      }),
+
+      execute: async ({ paths }) => {
+        return Promise.all(
+          paths.map(async (path) => ({
+            path,
+            content: await executor.readFile(path),
+          }))
+        );
+      },
+    }),
+
   };
 }

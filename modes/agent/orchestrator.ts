@@ -9,12 +9,38 @@ import { getAgentModel } from "../../ai";
 import { renderTerminalMarkdown } from "../../Tui/terminal-md.ts";
 import { runApprovalFlow } from "./approval.ts";
 
-export async function runAgentMode() {
-  console.log(chalk.bold("\nAgent Mode\n"));
+const toolMessages = [
+  "Summoning",
+  "Dispatching",
+  "Unwrapping",
+  "Negotiating with",
+  "Politely asking",
+];
 
+const msg =
+  toolMessages[Math.floor(Math.random() * toolMessages.length)];
+
+const startupLines = [
+  "Checking the naughty list...",
+  "Sharpening candy-cane powered tools...",
+  "Convincing TypeScript to cooperate...",
+  "Reading code written at 3AM...",
+  "Making optimistic assumptions...",
+];
+
+
+export async function runAgentMode() {
+
+
+  console.log(
+    chalk.dim(
+      startupLines[Math.floor(Math.random() * startupLines.length)]
+    )
+  );
+  console.log(chalk.bold("\nSantaClaw\n"));
   const goal = await text({
-    message: "What would you like the agent to do?",
-    placeholder: "Concrete task for this codebase…",
+    message: "What's the mission?",
+    placeholder: "Fix errors or hack NASA ?...",
   });
 
   if (isCancel(goal) || !goal.trim()) return;
@@ -27,10 +53,20 @@ export async function runAgentMode() {
   const agent = new ToolLoopAgent({
     model: getAgentModel(),
     stopWhen: stepCountIs(40),
+
     instructions: [
       `Workspace root: ${config.codebasePath}`,
-      "All mutations are staged until approval.",
+
+      "All file modifications must remain staged until explicit user approval.",
+
+      "When inspecting multiple related files, prefer read_multiple_files instead of repeated read_file calls.",
+
+      "Before making changes, understand the relevant project structure and dependencies.",
+
+      "Use analyze_codebase, list_files, and search_files to gather context before editing.",
+
     ].join("\n"),
+
     tools,
   });
 
@@ -38,9 +74,12 @@ export async function runAgentMode() {
     prompt: goal.trim(),
     onStepFinish: ({ toolCalls }) => {
       for (const tc of toolCalls) {
+        const msg =
+          toolMessages[Math.floor(Math.random() * toolMessages.length)];
         const preview = JSON.stringify(tc.input).slice(0, 160);
         console.log(
-          chalk.green("  ✓"),
+          chalk.cyan("  ❄"),
+          chalk.bold(msg),
           chalk.bold(String(tc.toolName)),
           chalk.dim(preview + (preview.length >= 160 ? "..." : "")),
         );
@@ -50,17 +89,23 @@ export async function runAgentMode() {
 
   if (result.text?.trim()) console.log(renderTerminalMarkdown(result.text));
 
+  console.log(
+    chalk.yellow(
+      "\nProposed changes are wrapped and waiting for approval.\n"
+    )
+  );
+
   const ok = await runApprovalFlow(tracker);
   if (!ok) return executor.clearStaging();
 
   const { errors } = executor.applyApprovedFromTracker();
 
   if (errors.length) {
-    console.log(chalk.red("\nSome operations reported errors:\n"));
+    console.log(chalk.red("\n A few snowballs hit the propeller:\n"));
     for (const e of errors) console.log(chalk.red(`  • ${e}`));
   }
-  else{
-   console.log(chalk.green('\n✓ Applied.\n'));
+  else {
+    console.log(chalk.green('\n Sleigh has landed. Workshop approved.\n'));
   }
 
   executor.clearStaging()
