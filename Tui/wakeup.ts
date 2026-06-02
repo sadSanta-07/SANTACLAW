@@ -8,6 +8,14 @@ const BANNER_FONT = "ANSI Shadow";
 const SHADOW = chalk.hex("#5b4d9e");
 const FACE = chalk.hex("#e8dcf8").bold;
 
+const startupLines = [
+    "Opening the workshop...",
+    "Counting candy canes...",
+    "Checking the naughty list...",
+    "Convincing TypeScript to cooperate...",
+    "Waking the elves...",
+];
+
 function printBannerWithShadow(ascii: string) {
     const bannerLines = ascii.replace(/\s+$/, "").split("\n");
 
@@ -46,19 +54,23 @@ export async function runWakeup() {
     printBannerWithShadow(ascii);
 
     const mode = await select({
-        message: "Ye le mode choose kar bhai...",
+        message: "The workshop is open. What are we building?",
         options: [
-            { value: "cli", label: "CLI" },
-            { value: "telegram", label: "Telegram" },
-            { value: "exit", label: "exit" }
+            { value: "cli", label: " Workshop Mode" },
+            { value: "telegram", label: " Telegram Mode" },
+            { value: "exit", label: " Leave Workshop" }
         ]
     });
-    if (isCancel(mode || mode === "exit")) {
+    if (isCancel(mode) || mode === "exit") {
         console.log(chalk.dim('\n muhehehee bye bye'))
     }
 
     if (mode === "cli") {
-        console.log(chalk.dim("cli shuru horha hai..."))
+        console.log(
+            chalk.dim(
+                startupLines[Math.floor(Math.random() * startupLines.length)]
+            )
+        );
         await runCliMode()
     } else if (mode === "telegram") {
         console.log(chalk.dim("telegram shuru horha hai..."))
