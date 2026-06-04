@@ -2,6 +2,7 @@ import type { Telegraf } from "telegraf";
 import { WELCOME } from "./constants";
 import { isOwner } from "./auth";
 import { commandArg } from "./text";
+import { runAsk } from "./agent-run";
 
 
 export function registerHandlers(bot: Telegraf) {
@@ -18,6 +19,6 @@ export function registerHandlers(bot: Telegraf) {
                 parse_mode: "Markdown",
             });
         await ctx.reply("Researching your question…");
-        
+        void runAsk(ctx, q).catch(console.error);
     });
 }
