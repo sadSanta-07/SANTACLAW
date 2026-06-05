@@ -80,3 +80,16 @@ export async function runAsk(ctx: { reply: (t: string, o?: object) => Promise<un
     await replyMd(ctx, text || ("no answer"))
 }
 
+export async function runAgent(ctx: { reply: (t: string, o?: object) => Promise<unknown> }, chatId: number, goal: string) {
+  const config = defaultAgentConfig();
+  const tracker = new ActionTracker();
+  const executor = new ToolExecutor(tracker, config);
+  const tools = createAgentTools(executor);
+  const agent = new ToolLoopAgent({
+    ...agentOptions(config, 40),
+    tools,
+  });
+  const { text } = await agent.generate({ prompt: goal });
+  if (text?.trim()) await replyMd(ctx, text.trim());
+}
+
