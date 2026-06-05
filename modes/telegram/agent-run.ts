@@ -93,3 +93,27 @@ export async function runAgent(ctx: { reply: (t: string, o?: object) => Promise<
   if (text?.trim()) await replyMd(ctx, text.trim());
 }
 
+export async function runPlanSteps(
+  ctx: { reply: (t: string, o?: object) => Promise<unknown> },
+  chatId: number,
+  plan: Plan,
+  steps: PlanStep[],
+) {
+  const config = defaultAgentConfig();
+  const tracker = new ActionTracker();
+  const executor = new ToolExecutor(tracker, config);
+  const tools = { ...createAgentTools(executor), ...extraWebTools(tracker) };
+
+  for (const step of steps) {
+    await ctx.reply(`Executing: *${step.title}*`, { parse_mode: 'Markdown' });
+    const prompt = [`Goal: ${plan.goal}`, `Step: ${step.title}`, step.description].join('\n');
+    const agent = new ToolLoopAgent({
+      ...agentOptions(config, 30),
+      tools,
+    });
+    const { text } = await agent.generate({ prompt });
+    if (text?.trim()) await replyMd(ctx, text.trim());
+  }
+
+}
+
