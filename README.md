@@ -1,132 +1,670 @@
 # 🎅 SantaClaw
 
-> A free, personalized AI-powered coding assistant for your terminal.
+<div align="center">
 
-SantaClaw is a Bun-powered AI CLI that helps you **ask questions, plan features, and autonomously modify codebases** while keeping every change staged for your approval.
+### Your AI-Powered Terminal Engineer
 
-Built as a personal alternative to OpenClaw, SantaClaw combines agentic workflows, codebase understanding, and a developer-friendly terminal experience into a single tool.
+**Ask questions. Generate plans. Build features. Review every change. Stay in control.**
+
+SantaClaw is an approval-first AI coding assistant built for developers who want the power of autonomous agents without surrendering control of their codebase.
+
+Unlike many AI coding tools that directly modify files, SantaClaw stages every proposed change and lets you review, approve, or reject modifications before they are applied.
+
+Built with **Bun**, **TypeScript**, **AI SDK**, and a modular tool architecture.
 
 ---
 
-## ✨ Features
+![License](https://img.shields.io/badge/license-MIT-green)
+![Bun](https://img.shields.io/badge/runtime-Bun-orange)
+![TypeScript](https://img.shields.io/badge/language-TypeScript-blue)
+![Status](https://img.shields.io/badge/status-active-success)
 
-### 🤖 Agent Mode
+</div>
 
-An autonomous coding agent capable of:
+---
 
-* Reading and understanding codebases
-* Searching project files
+# ✨ Features
+
+## 🤖 Autonomous Agent Mode
+
+A fully autonomous coding agent capable of:
+
+* Understanding repository structure
+* Exploring project architecture
+* Searching and analyzing codebases
 * Creating new files
 * Modifying existing files
-* Deleting files
 * Refactoring code
-* Planning multi-step implementations
+* Removing obsolete code
+* Generating implementation plans
+* Executing multi-step development workflows
 
-Every modification is staged before being applied.
+Every modification is staged before application.
 
-### 💡 Ask Mode
+---
+
+## 💡 Ask Mode
 
 Ask questions about:
 
 * Your codebase
 * Programming concepts
+* System design
 * Architecture decisions
+* Performance bottlenecks
 * Debugging issues
-* Refactoring strategies
+* Framework-specific problems
+* Best practices
 
-Answers are rendered beautifully inside the terminal.
+SantaClaw analyzes project context before answering.
 
-### 📋 Plan Mode
+---
+
+## 📋 Plan Mode
 
 Generate implementation plans before writing code.
 
-Perfect for:
+Ideal for:
 
 * New features
 * Refactors
-* System design
+* Database migrations
+* API design
+* Microservice architecture
 * Project roadmaps
 * Learning unfamiliar codebases
 
-### 📱 Telegram Mode
+---
 
-Access SantaClaw through Telegram and use the same AI-powered workflows remotely.
+## 📱 Telegram Mode
 
-### 🛡 Approval-First Workflow
+Use SantaClaw remotely through Telegram.
 
-Unlike many AI coding assistants, SantaClaw never directly modifies your project.
+Access:
 
-Every action follows this workflow:
+* Ask Mode
+* Planning
+* Codebase discussions
+* Development workflows
+
+from anywhere.
+
+---
+
+## 🔒 Approval-First Workflow
+
+SantaClaw never silently changes your code.
+
+Every action follows:
 
 ```text
 Analyze
    ↓
+Understand
+   ↓
 Plan
    ↓
-Stage Changes
+Generate Changes
    ↓
-Review Diff
+Stage Diff
+   ↓
+Review
    ↓
 Approve / Reject
    ↓
 Apply
 ```
 
-You stay in control at all times.
-
-### 🔍 Codebase Intelligence
-
-SantaClaw can:
-
-* Analyze project structure
-* Explore directories
-* Read multiple files
-* Search codebases
-* Understand relationships between files
-* Build context before making changes
-
-### 🧰 Built-In Tools
-
-* `read_file`
-* `read_multiple_files`
-* `list_files`
-* `search_files`
-* `analyze_codebase`
-* `create_file`
-* `modify_file`
-* `delete_file`
-* `create_folder`
-* `execute_shell` (optional)
-
-### 🎨 Beautiful Terminal Experience
-
-Built with:
-
-* Bun
-* Clack
-* Chalk
-* Figlet
-* AI SDK
-
-Features:
-
-* Interactive menus
-* Markdown rendering
-* Colorful prompts
-* Santa-themed personality
-* Clean CLI workflows
+You remain in control at every step.
 
 ---
 
-## 🚀 Quick Start
+## 🧠 Codebase Intelligence
 
-### Install Dependencies
+SantaClaw builds contextual understanding before acting.
+
+Capabilities include:
+
+* Repository exploration
+* Dependency discovery
+* Architecture analysis
+* File relationship mapping
+* Context gathering
+* Multi-file reasoning
+* Feature tracing
+
+The goal is to understand before modifying.
+
+---
+
+## 🧰 Built-In Tool Ecosystem
+
+| Tool                  | Description                        |
+| --------------------- | ---------------------------------- |
+| `read_file`           | Read a file                        |
+| `read_multiple_files` | Read multiple files simultaneously |
+| `list_files`          | Explore directories                |
+| `search_files`        | Search codebases                   |
+| `analyze_codebase`    | Build repository understanding     |
+| `create_file`         | Create new files                   |
+| `modify_file`         | Stage file modifications           |
+| `delete_file`         | Stage file removals                |
+| `create_folder`       | Create folders                     |
+| `execute_shell`       | Optional shell execution           |
+
+The tool system is modular and extensible.
+
+---
+
+# 🚀 Why SantaClaw?
+
+Most AI coding assistants optimize for automation.
+
+SantaClaw optimizes for **trust**.
+
+| Capability               | SantaClaw | Typical Agent |
+| ------------------------ | --------- | ------------- |
+| Repository Understanding | ✅         | ✅             |
+| Autonomous Execution     | ✅         | ✅             |
+| Visible Planning         | ✅         | ⚠️            |
+| Staged Changes           | ✅         | ❌             |
+| Human Approval Gate      | ✅         | ❌             |
+| Terminal Native          | ✅         | ⚠️            |
+| Tool Transparency        | ✅         | ⚠️            |
+| Self-Hosted Friendly     | ✅         | ⚠️            |
+
+SantaClaw treats developers as decision makers, not passengers.
+
+---
+
+# 🧠 Agent Architecture
+
+SantaClaw follows a structured reasoning pipeline.
+
+```mermaid
+flowchart TD
+
+A[User Prompt]
+--> B[Intent Analysis]
+
+B --> C[Repository Analysis]
+
+C --> D[Context Collection]
+
+D --> E[Planning Engine]
+
+E --> F[Tool Execution]
+
+F --> G[Diff Generation]
+
+G --> H[Approval Gate]
+
+H -->|Approve| I[Apply Changes]
+
+H -->|Reject| J[Discard Changes]
+```
+
+Every step is explicit and observable.
+
+---
+
+# ⚙️ Internal Orchestration Pipeline
+
+The agent operates through several coordinated phases.
+
+```mermaid
+flowchart LR
+
+Prompt
+--> Planner
+
+Planner
+--> Analyzer
+
+Analyzer
+--> ContextBuilder
+
+ContextBuilder
+--> Executor
+
+Executor
+--> DiffEngine
+
+DiffEngine
+--> ApprovalSystem
+
+ApprovalSystem
+--> User
+```
+
+---
+
+## Phase 1 — Intent Understanding
+
+SantaClaw first determines:
+
+* What the user wants
+* Scope of requested work
+* Potential risks
+* Required context
+
+Example:
+
+```text
+"Add JWT authentication"
+```
+
+The agent identifies:
+
+* Authentication feature
+* Security-sensitive modification
+* Multi-file implementation
+
+---
+
+## Phase 2 — Repository Analysis
+
+The agent gathers context by:
+
+* Traversing directories
+* Reading configuration files
+* Identifying frameworks
+* Mapping dependencies
+
+Example discoveries:
+
+```text
+Express
+Prisma
+JWT already installed
+User model exists
+```
+
+---
+
+## Phase 3 — Planning
+
+The planner creates an implementation strategy.
+
+Example:
+
+```text
+1. Create JWT utility
+2. Create auth middleware
+3. Add login endpoint
+4. Protect routes
+5. Update documentation
+```
+
+---
+
+## Phase 4 — Execution
+
+Tools execute the plan.
+
+```text
+read_file()
+search_files()
+modify_file()
+create_file()
+```
+
+Changes remain staged.
+
+---
+
+## Phase 5 — Diff Generation
+
+SantaClaw prepares a reviewable diff.
+
+Example:
+
+```diff
++ src/auth/jwt.ts
++ src/middleware/auth.ts
++ src/routes/auth.ts
+
+- legacyAuth.ts
+```
+
+Nothing is applied yet.
+
+---
+
+## Phase 6 — Approval Gate
+
+The user reviews:
+
+```text
+Approve?
+[Y] Yes
+[N] No
+```
+
+No approval = no modification.
+
+---
+
+# 🏗 System Architecture
+
+```mermaid
+flowchart TB
+
+User
+
+User --> TUI
+
+TUI --> Router
+
+Router --> AskMode
+Router --> PlanMode
+Router --> AgentMode
+
+AgentMode --> Planner
+
+Planner --> AIModel
+
+Planner --> ToolLayer
+
+ToolLayer --> FileSystem
+
+ToolLayer --> SearchEngine
+
+ToolLayer --> ShellExecution
+
+AIModel --> DiffGenerator
+
+DiffGenerator --> ApprovalGate
+
+ApprovalGate --> User
+```
+
+---
+
+# 📂 Project Structure
+
+```text
+src/
+│
+├── Tui/
+│   ├── prompts/
+│   ├── renderer/
+│   └── markdown/
+│
+├── ai/
+│   ├── providers/
+│   ├── prompts/
+│   └── models/
+│
+├── modes/
+│   │
+│   ├── ask/
+│   │
+│   ├── plan/
+│   │
+│   ├── agent/
+│   │
+│   └── telegram/
+│
+├── tools/
+│   ├── filesystem/
+│   ├── search/
+│   ├── shell/
+│   └── analysis/
+│
+├── orchestration/
+│   ├── planner/
+│   ├── executor/
+│   ├── context/
+│   └── approval/
+│
+├── types/
+│
+├── utils/
+│
+└── index.ts
+```
+
+---
+
+# 🔄 Example Workflow
+
+## User Request
+
+```text
+Add JWT authentication to my API
+```
+
+---
+
+## Repository Analysis
+
+```text
+✓ Express detected
+
+✓ Prisma detected
+
+✓ Existing User model found
+
+✓ No auth middleware present
+```
+
+---
+
+## Generated Plan
+
+```text
+1. Install JWT dependency
+2. Create token utility
+3. Create auth middleware
+4. Add login route
+5. Protect endpoints
+```
+
+---
+
+## Generated Changes
+
+```text
++ src/auth/jwt.ts
+
++ src/middleware/auth.ts
+
++ src/routes/auth.ts
+
+~ src/server.ts
+```
+
+---
+
+## Review Diff
+
+```text
+──────────────────────────────
+Review Generated Changes
+──────────────────────────────
+
+4 files modified
+
+Approve?
+
+[Y] Yes
+[N] No
+```
+
+---
+
+## Apply
+
+```text
+✓ Changes applied successfully
+```
+
+---
+
+# 🔒 Safety Model
+
+SantaClaw is designed around safe automation.
+
+Security principles:
+
+### Human-in-the-Loop
+
+Every modification requires approval.
+
+### Workspace Isolation
+
+Operations are restricted to approved directories.
+
+### Explicit Tool Access
+
+Dangerous tools can be disabled.
+
+### Diff Visibility
+
+Every modification is reviewable.
+
+### Optional Shell Access
+
+Shell execution is configurable.
+
+---
+
+# 📸 Screenshots
+
+## Main Menu
+
+```text
+🎅 SantaClaw Workshop
+
+1. Build
+2. Ask
+3. Plan
+4. Telegram
+5. Exit
+```
+
+---
+
+## Planning View
+
+```text
+Generating implementation strategy...
+
+✓ Context gathered
+✓ Dependencies identified
+✓ Plan generated
+```
+
+---
+
+## Diff Review
+
+```text
++ Added JWT utility
++ Added auth middleware
+~ Updated server routes
+
+Approve?
+```
+
+---
+
+# 🧱 Technology Stack
+
+### Runtime
+
+* Bun
+
+### Language
+
+* TypeScript
+
+### AI Layer
+
+* AI SDK
+
+### Terminal UI
+
+* Clack
+* Chalk
+* Figlet
+
+### Messaging
+
+* Telegram Bot API
+
+### Architecture Principles
+
+* Approval First
+* Tool Driven
+* Context Aware
+* Terminal Native
+* Extensible
+* Transparent
+
+---
+
+# 🛣 Roadmap
+
+## Version 1
+
+* [x] Ask Mode
+* [x] Plan Mode
+* [x] Agent Mode
+* [x] Telegram Mode
+* [x] Diff Approval System
+* [x] Repository Analysis
+
+---
+
+## Version 2
+
+* [ ] Persistent Agent Memory
+* [ ] Git Integration
+* [ ] Branch Creation
+* [ ] Commit Generation
+* [ ] Session Recovery
+* [ ] Repository Embeddings
+* [ ] Advanced Search Indexing
+
+---
+
+## Version 3
+
+* [ ] Multi-Agent Collaboration
+* [ ] GitHub Integration
+* [ ] Pull Request Generation
+* [ ] Browser Automation
+* [ ] Remote Execution
+* [ ] Plugin Marketplace
+* [ ] Agent Skills Framework
+
+---
+
+# 🚀 Installation
+
+## Clone Repository
+
+```bash
+git clone https://github.com/yourname/santaclaw.git
+```
+
+```bash
+cd santaclaw
+```
+
+---
+
+## Install Dependencies
 
 ```bash
 bun install
 ```
 
-### Launch SantaClaw
+---
+
+## Start SantaClaw
 
 ```bash
 bun run index.ts wakeup
@@ -134,91 +672,54 @@ bun run index.ts wakeup
 
 ---
 
-## 🎯 Available Modes
+# 🤝 Contributing
 
-| Mode     | Description                                            |
-| -------- | ------------------------------------------------------ |
-| 🤖 Build | Autonomous coding agent capable of modifying codebases |
-| 📋 Plan  | Generate implementation plans before coding            |
-| 💡 Ask   | Ask technical questions about code or projects         |
-| 🚪 Leave | Exit the workshop                                      |
+Contributions are welcome.
 
----
+Ideas, bug reports, pull requests, feature proposals, and architectural discussions are encouraged.
 
-## 🏗 Project Structure
-
-```text
-src/
-├── Tui/                # Terminal UI & markdown rendering
-├── ai/                 # AI model configuration
-├── modes/
-│   ├── ask/            # Q&A mode
-│   ├── plan/           # Planning mode
-│   └── agent/          # Autonomous coding agent
-├── index.ts            # Application entrypoint
-└── package.json
-```
-
----
-
-## 🔒 Safety Features
-
-* Staged file modifications
-* Approval-based workflow
-* Workspace path restrictions
-* Tool permission controls
-* Optional shell execution
-* Action tracking and review
-
----
-
-## ⚡ Why SantaClaw?
-
-Unlike traditional AI coding tools, SantaClaw focuses on:
-
-* Transparency
-* Control
-* Safety
-* Terminal-native workflows
-* Extensibility
-* Developer ownership
-
-The AI works for you — not the other way around.
-
----
-
-## 🤖 Generated By SantaClaw
-
-This README was researched and generated by **SantaClaw itself**.
-
-The agent explored the codebase, analyzed project structure, identified key features, and generated documentation using its own reasoning and tooling capabilities.
-
-> SantaClaw documented SantaClaw. 🎅
-
----
-
-## 🤝 Contributing
-
-Contributions, ideas, bug reports, and pull requests are welcome.
+Create a branch:
 
 ```bash
 git checkout -b feature/amazing-feature
 ```
 
-Build something cool and open a PR.
+Build something cool and open a pull request.
 
 ---
 
-## 📜 License
+# 📜 License
 
 MIT License
 
+Use freely.
+Modify freely.
+Build awesome things.
+
 ---
 
-## 🎄 Ready to Build?
+# 🎄 Built By SantaClaw
+
+This documentation can be generated by SantaClaw itself.
+
+The agent is capable of:
+
+* Exploring repositories
+* Understanding architecture
+* Identifying features
+* Producing technical documentation
+* Explaining implementation details
+
+SantaClaw can document SantaClaw.
+
+---
+
+# 🎅 Ready to Build?
 
 ```bash
 bun run index.ts wakeup
 ```
 
-**Ask. Plan. Build. Approve.**
+### Ask. Plan. Build. Approve.
+
+**Your code. Your decisions. Your workshop.**
