@@ -18,9 +18,28 @@ Built with **Bun**, **TypeScript**, **AI SDK**, and a modular tool architecture.
 ![Bun](https://img.shields.io/badge/runtime-Bun-orange)
 ![TypeScript](https://img.shields.io/badge/language-TypeScript-blue)
 ![Status](https://img.shields.io/badge/status-active-success)
+[![Docker Hub](https://img.shields.io/badge/Docker-Hub-blue)](https://hub.docker.com/r/sahilsingh94/santaclaw)
 
 </div>
 
+---
+## Quick Start
+
+### Run with Docker
+
+```bash
+docker run -it \
+-e OPENROUTER_API_KEY=your_key \
+-e TELEGRAM_BOT_TOKEN=your_token \
+sahilsingh94/santaclaw:latest
+```
+
+No installation required.
+### Docker Image
+
+```bash
+docker pull sahilsingh94/santaclaw:latest
+```
 ---
 
 # ✨ Features
