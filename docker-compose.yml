@@ -1,0 +1,7 @@
+services:
+  santaclaw:
+    image: santaclaw:latest
+    env_file:
+      - .env
+    stdin_open: true
+    tty: true
