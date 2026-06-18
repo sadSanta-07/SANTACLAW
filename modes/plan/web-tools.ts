@@ -17,6 +17,48 @@ function clip(s: string, n = 8000): string {
     return s.length > n ? s.slice(0, n) + "\n…[truncated]" : s;
 }
 
+async function fetchWithTimeout(
+    url: string,
+    options: RequestInit = {},
+    timeoutMs = 10000
+) {
+    const controller = new AbortController();
+
+    const timeout = setTimeout(() => {
+        controller.abort();
+    }, timeoutMs);
+
+    try {
+        return await fetch(url, {
+            ...options,
+            signal: controller.signal,
+        });
+    } finally {
+        clearTimeout(timeout);
+    }
+}
+
+async function retry<T>(
+    fn: () => Promise<T>,
+    attempts = 3
+): Promise<T> {
+    let lastError;
+
+    for (let i = 0; i < attempts; i++) {
+        try {
+            return await fn();
+        } catch (err) {
+            lastError = err;
+
+            await new Promise((r) =>
+                setTimeout(r, 1000 * (i + 1))
+            );
+        }
+    }
+
+    throw lastError;
+}
+
 export function createWebTools(tracker: ActionTracker) {
     return {
         web_search: tool({
@@ -74,7 +116,7 @@ export function createWebTools(tracker: ActionTracker) {
             description: 'HTTP GET for a URL. Returns response body.',
             inputSchema: z.object({ url: z.string().url() }),
             execute: async ({ url }) => {
-                const r = await fetch(url, { redirect: 'follow' });
+                const r = await retry(() => fetchWithTimeout(url, {redirect: "follow",headers: {"User-Agent":"SANTACLAW/1.0"}}));
                 const body = await r.text();
                 const out = clip(body, 16_000);
                 tracker.log({
