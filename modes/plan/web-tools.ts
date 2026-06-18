@@ -116,7 +116,19 @@ export function createWebTools(tracker: ActionTracker) {
             description: 'HTTP GET for a URL. Returns response body.',
             inputSchema: z.object({ url: z.string().url() }),
             execute: async ({ url }) => {
-                const r = await retry(() => fetchWithTimeout(url, {redirect: "follow",headers: {"User-Agent":"SANTACLAW/1.0"}}));
+                const r = await retry(async () => {
+                    const res = await fetchWithTimeout(url, { redirect: "follow", headers: { "User-Agent": "SANTACLAW/1.0" } })
+                    if (
+                        res.status === 429 ||
+                        res.status >= 500
+                    ) {
+                        throw new Error(
+                            `Retryable status: ${res.status}`
+                        );
+                    }
+
+                    return res;
+                });
                 const body = await r.text();
                 const out = clip(body, 16_000);
                 tracker.log({
