@@ -400,52 +400,6 @@ ApprovalGate --> User
 
 ---
 
-# 📂 Project Structure
-
-```text
-src/
-│
-├── Tui/
-│   ├── prompts/
-│   ├── renderer/
-│   └── markdown/
-│
-├── ai/
-│   ├── providers/
-│   ├── prompts/
-│   └── models/
-│
-├── modes/
-│   │
-│   ├── ask/
-│   │
-│   ├── plan/
-│   │
-│   ├── agent/
-│   │
-│   └── telegram/
-│
-├── tools/
-│   ├── filesystem/
-│   ├── search/
-│   ├── shell/
-│   └── analysis/
-│
-├── orchestration/
-│   ├── planner/
-│   ├── executor/
-│   ├── context/
-│   └── approval/
-│
-├── types/
-│
-├── utils/
-│
-└── index.ts
-```
-
----
-
 # 🔄 Example Workflow
 
 ## User Request
