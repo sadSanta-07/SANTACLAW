@@ -25,21 +25,101 @@ Built with **Bun**, **TypeScript**, **AI SDK**, and a modular tool architecture.
 ---
 ## Quick Start
 
-### Run with Docker
+## Docker Deployment
+
+### Pull Image
+
+```bash
+docker pull sahilsingh94/santaclaw:latest
+```
+
+### Run Container
 
 ```bash
 docker run -it \
 -e OPENROUTER_API_KEY=your_key \
 -e TELEGRAM_BOT_TOKEN=your_token \
+-e FIRECRAWL_API_KEY=your_key \
 sahilsingh94/santaclaw:latest
 ```
 
-No installation required.
-### Docker Image
+### Using an Environment File
+
+Create a `.env` file:
+
+```env
+OPENROUTER_API_KEY=your_key
+TELEGRAM_BOT_TOKEN=your_token
+FIRECRAWL_API_KEY=your_key
+```
+
+Run:
 
 ```bash
-docker pull sahilsingh94/santaclaw:latest
+docker run -it --env-file .env sahilsingh94/santaclaw:latest
 ```
+
+### Docker Compose
+
+```yaml
+services:
+  santaclaw:
+    image: sahilsingh94/santaclaw:latest
+    env_file:
+      - .env
+    restart: unless-stopped
+```
+
+Start:
+
+```bash
+docker compose up -d
+```
+
+### Build From Source
+
+```bash
+git clone https://github.com/<your-username>/SANTACLAW.git
+
+cd SANTACLAW
+
+docker build -t santaclaw .
+```
+
+Run:
+
+```bash
+docker run -it --env-file .env santaclaw
+```
+
+### Required Environment Variables
+
+| Variable           | Required | Description             |
+| ------------------ | -------- | ----------------------- |
+| OPENROUTER_API_KEY | Yes      | LLM access              |
+| TELEGRAM_BOT_TOKEN | Optional | Telegram mode           |
+| FIRECRAWL_API_KEY  | Optional | Web search and crawling |
+
+### Troubleshooting
+
+View logs:
+
+```bash
+docker logs <container-id>
+```
+
+List running containers:
+
+```bash
+docker ps
+```
+
+Verify environment variables:
+
+```bash
+docker exec -it <container-id> env
+```
+
 ---
 
 # ✨ Features
