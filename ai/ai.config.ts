@@ -1,9 +1,10 @@
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 
 export function getAgentModel() {
-  const provier = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
+  const provider = createOpenRouter({ apiKey: process.env.OPENROUTER_API_KEY });
 
-  const modelId = process.env.OPENROUTER_DEFAULT_MODEL;
+// Falls back to gemini-2.0-flash if OPENROUTER_DEFAULT_MODEL is not set
+  const modelId = process.env.OPENROUTER_DEFAULT_MODEL || "google/gemini-2.0-flash-001";
 
-  return provier(modelId);
+  return provider(modelId);
 }
