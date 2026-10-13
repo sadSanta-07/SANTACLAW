@@ -5,7 +5,7 @@ import { clip, commandArg } from "./text";
 import { runAgent, runAsk, runPlanSteps } from "./agent-run";
 import { generatePlan } from "../plan/planner";
 import { planKeyboard, planMessage, planSessions, refreshPlanUi, type PlanSession } from "./plan-session";
-import { approvalDiff, approvalSessions } from "./approval-session";
+import { approvalDiff, approvalSessions, getApprovalSessionForCallback } from "./approval-session";
 
 
 export function registerHandlers(bot: Telegraf) {
@@ -103,37 +103,56 @@ export function registerHandlers(bot: Telegraf) {
         void runPlanSteps(ctx, ctx.chat!.id, plan, steps).catch(console.error);
     });
 
-    bot.action('approval_diff', async (ctx) => {
+    bot.action(/^approval_diff:(.+)$/, async (ctx) => {
         if (!isOwner(ctx.chat!.id)) return ctx.answerCbQuery();
-        const s = approvalSessions.get(ctx.chat!.id);
-        if (!s) return ctx.answerCbQuery();
+        const session = getApprovalSessionForCallback(
+            ctx.chat!.id,
+            ctx.match[1]!,
+            ctx.callbackQuery.message?.message_id,
+        );
+        if (!session) return ctx.answerCbQuery('This approval is stale or has expired.');
         await ctx.answerCbQuery();
-        await ctx.reply(clip(approvalDiff(s.pending)));
+        await ctx.reply(clip(approvalDiff(session.pending)));
     });
 
-    bot.action('approval_accept', async (ctx) => {
+    bot.action(/^approval_accept:(.+)$/, async (ctx) => {
         if (!isOwner(ctx.chat!.id)) return ctx.answerCbQuery();
-        const s = approvalSessions.get(ctx.chat!.id);
-        if (!s) return ctx.answerCbQuery();
+        const chatId = ctx.chat!.id;
+        const session = getApprovalSessionForCallback(
+            chatId,
+            ctx.match[1]!,
+            ctx.callbackQuery.message?.message_id,
+        );
+        if (!session) return ctx.answerCbQuery('This approval is stale or has expired.');
 
-        approvalSessions.delete(ctx.chat!.id);
-        for (const a of s.pending) s.tracker.updateStatus(a.id, 'approved', true);
-        const { errors } = s.executor.applyApprovedFromTracker();
-        s.executor.clearStaging();
+        // Claim the session synchronously before awaiting Telegram APIs so a
+        // duplicate callback cannot apply the same actions twice.
+        if (approvalSessions.get(chatId) !== session) return ctx.answerCbQuery('This approval is stale or has expired.');
+        approvalSessions.delete(chatId);
+        for (const a of session.pending) session.tracker.updateStatus(a.id, 'approved', true);
+        const { errors } = session.executor.applyApprovedFromTracker();
+        session.executor.clearStaging();
 
-        await ctx.editMessageText('All changes applied.');
-        await ctx.answerCbQuery('Applied!');
+        await ctx.editMessageText(errors.length
+            ? `Approval processed, but ${errors.length} operation(s) failed. Check the application logs.`
+            : 'All changes applied.');
+        await ctx.answerCbQuery(errors.length ? 'Applied with errors' : 'Applied!');
         if (errors.length) console.error(errors);
     });
 
-    bot.action('approval_reject', async (ctx) => {
+    bot.action(/^approval_reject:(.+)$/, async (ctx) => {
         if (!isOwner(ctx.chat!.id)) return ctx.answerCbQuery();
-        const s = approvalSessions.get(ctx.chat!.id);
-        if (!s) return ctx.answerCbQuery();
-
-        approvalSessions.delete(ctx.chat!.id);
-        for (const a of s.pending) s.tracker.updateStatus(a.id, 'rejected', false);
-        s.executor.clearStaging();
+        const chatId = ctx.chat!.id;
+        const session = getApprovalSessionForCallback(
+            chatId,
+            ctx.match[1]!,
+            ctx.callbackQuery.message?.message_id,
+        );
+        if (!session) return ctx.answerCbQuery('This approval is stale or has expired.');
+        if (approvalSessions.get(chatId) !== session) return ctx.answerCbQuery('This approval is stale or has expired.');
+        approvalSessions.delete(chatId);
+        for (const a of session.pending) session.tracker.updateStatus(a.id, 'rejected', false);
+        session.executor.clearStaging();
 
         await ctx.editMessageText('All changes rejected. Nothing was applied.');
         await ctx.answerCbQuery('Rejected');
