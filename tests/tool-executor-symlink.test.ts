@@ -22,12 +22,7 @@ describe("ToolExecutor workspace symlink containment", () => {
     const config = defaultAgentConfig();
     config.codebasePath = workspace;
     executor = new ToolExecutor(new ActionTracker(), config);
-    try {
-      fs.symlinkSync(outside, path.join(workspace, "escape"), "dir");
-    } catch (error) {
-      // Symlink creation may be restricted on some Windows runners.
-      throw new Error(`Could not create symlink test fixture: ${String(error)}`);
-    }
+    fs.symlinkSync(outside, path.join(workspace, "escape"), "dir");
   });
 
   afterEach(() => {
@@ -45,6 +40,10 @@ describe("ToolExecutor workspace symlink containment", () => {
   test("rejects deletes through an outside-pointing symlink", () => {
     expect(() => executor.deleteFile("escape/secret.txt")).toThrow(/outside workspace/);
     expect(fs.readFileSync(path.join(outside, "secret.txt"), "utf8")).toBe("outside-secret");
+  });
+
+  test("rejects creation below a symlink to an outside directory", () => {
+    expect(() => executor.createFile("escape/new.txt", "outside")).toThrow(/outside workspace/);
   });
 
   test("keeps ordinary workspace paths available", () => {
