@@ -7,7 +7,10 @@
     "santaclaw-build": "./index.ts"
   },
   "scripts": {
-    "wakeup": "bun index.ts wakeup"
+    "wakeup": "bun index.ts wakeup",
+    "test": "bun test ./tests",
+    "typecheck": "bunx tsc --noEmit",
+    "ci": "bun run typecheck && bun run test"
   },
   "devDependencies": {
     "@types/bun": "latest",
