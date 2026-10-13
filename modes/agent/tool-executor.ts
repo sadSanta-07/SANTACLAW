@@ -10,9 +10,20 @@ const TEXT_EXT = new Set([
   ".css", ".html", ".yml", ".yaml", ".toml", ".txt",
 ]);
 
+const DEFAULT_SHELL_TIMEOUT_MS = 30_000;
+
 function isProbablyTextFile(filePath: string): boolean {
   const ext = path.extname(filePath).toLowerCase();
   return TEXT_EXT.has(ext) || ext === "";
+}
+
+function isInside(root: string, target: string): boolean {
+  const relative = path.relative(root, target);
+  return relative === "" || (
+    relative !== ".." &&
+    !relative.startsWith(`..${path.sep}`) &&
+    !path.isAbsolute(relative)
+  );
 }
 
 export class ToolExecutor {
@@ -27,17 +38,13 @@ export class ToolExecutor {
   ) {}
 
   /**
-   * Resolve a workspace-relative path while enforcing both lexical and
-   * filesystem containment. For a non-existent write target, validate the
-   * nearest existing ancestor so a symlinked parent cannot escape the root.
+   * Resolve a workspace-relative path while enforcing lexical and filesystem
+   * containment. For missing targets, validate the nearest existing ancestor.
    */
   private resolveSafe(rel: string): string {
     const root = path.resolve(this.config.codebasePath);
     const abs = path.resolve(root, rel);
-    const relCheck = path.relative(root, abs);
-    if (relCheck === ".." || relCheck.startsWith(`..${path.sep}`) || path.isAbsolute(relCheck)) {
-      throw new Error(`Path escapes workspace: ${rel}`);
-    }
+    if (!isInside(root, abs)) throw new Error(`Path escapes workspace: ${rel}`);
 
     const realRoot = fs.realpathSync(root);
     let existing = abs;
@@ -50,28 +57,36 @@ export class ToolExecutor {
     }
 
     const realExisting = fs.realpathSync(existing);
-    const realRelative = path.relative(realRoot, realExisting);
-    if (
-      realRelative === ".." ||
-      realRelative.startsWith(`..${path.sep}`) ||
-      path.isAbsolute(realRelative)
-    ) {
+    if (!isInside(realRoot, realExisting)) {
       throw new Error(`Path resolves outside workspace: ${rel}`);
     }
 
-    // Check the resolved destination as well, including any symlink at the
-    // final component. For missing targets, reattach only non-existing names
-    // to the validated real ancestor.
     const resolved = missing.reduce((base, segment) => path.join(base, segment), realExisting);
-    const finalRelative = path.relative(realRoot, resolved);
-    if (
-      finalRelative === ".." ||
-      finalRelative.startsWith(`..${path.sep}`) ||
-      path.isAbsolute(finalRelative)
-    ) {
+    if (!isInside(realRoot, resolved)) {
       throw new Error(`Path resolves outside workspace: ${rel}`);
     }
     return resolved;
+  }
+
+  /** Resolve again at the mutation boundary, including the parent directory. */
+  private resolveSafeForMutation(rel: string): string {
+    const target = this.resolveSafe(rel);
+    const root = fs.realpathSync(this.config.codebasePath);
+    const parent = path.dirname(target);
+    const realParent = fs.realpathSync(parent);
+    if (!isInside(root, realParent)) {
+      throw new Error(`Path resolves outside workspace: ${rel}`);
+    }
+    // Existing final-component symlinks are resolved by resolveSafe. For a
+    // missing file, the checked real parent is the actual destination anchor.
+    return target;
+  }
+
+  private get shellTimeoutMs(): number {
+    const configured = Number(process.env.SANTACLAW_SHELL_TIMEOUT_MS);
+    return Number.isFinite(configured) && configured > 0
+      ? Math.floor(configured)
+      : DEFAULT_SHELL_TIMEOUT_MS;
   }
 
   private excluded(relPath: string): boolean {
@@ -90,9 +105,7 @@ export class ToolExecutor {
   }
 
   private assertNotExcluded(rel: string, op: string): void {
-    if (this.excluded(rel)) {
-      throw new Error(`${op}: path is excluded by policy: ${rel}`);
-    }
+    if (this.excluded(rel)) throw new Error(`${op}: path is excluded by policy: ${rel}`);
   }
 
   getEffectiveText(rel: string): string | undefined {
@@ -107,13 +120,9 @@ export class ToolExecutor {
   readFile(rel: string): string {
     this.assertNotExcluded(rel, "read_file");
     const abs = this.resolveSafe(rel);
-    if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) {
-      throw new Error(`File not found: ${rel}`);
-    }
+    if (!fs.existsSync(abs) || !fs.statSync(abs).isFile()) throw new Error(`File not found: ${rel}`);
     const st = fs.statSync(abs);
-    if (st.size > this.config.maxFileSizeToRead) {
-      throw new Error(`File too large: ${rel}`);
-    }
+    if (st.size > this.config.maxFileSizeToRead) throw new Error(`File too large: ${rel}`);
     const text = fs.readFileSync(abs, "utf8");
     this.tracker.log({
       type: "code_analysis",
@@ -125,74 +134,46 @@ export class ToolExecutor {
   }
 
   createFile(rel: string, content: string): string {
-    if (!this.config.tools.allowFileCreation)
-      throw new Error("File creation disabled");
+    if (!this.config.tools.allowFileCreation) throw new Error("File creation disabled");
     this.assertNotExcluded(rel, "create_file");
     const key = this.norm(rel);
     const abs = this.resolveSafe(rel);
-    if (fs.existsSync(abs) && !this.deleted.has(key)) {
-      throw new Error(`create_file: already exists: ${rel}`);
-    }
+    if (fs.existsSync(abs) && !this.deleted.has(key)) throw new Error(`create_file: already exists: ${rel}`);
     this.deleted.delete(key);
     this.overlay.set(key, content);
-    this.tracker.log({
-      type: "file_create",
-      path: key,
-      details: { after: content },
-      status: "pending",
-    });
+    this.tracker.log({ type: "file_create", path: key, details: { after: content }, status: "pending" });
     return `Staged new file: ${key}`;
   }
 
   modifyFile(rel: string, content: string): string {
-    if (!this.config.tools.allowFileModification)
-      throw new Error("File modification disabled");
+    if (!this.config.tools.allowFileModification) throw new Error("File modification disabled");
     this.assertNotExcluded(rel, "modify_file");
     const before = this.getEffectiveText(rel);
-    if (before === undefined)
-      throw new Error(`modify_file: file not found: ${rel}`);
+    if (before === undefined) throw new Error(`modify_file: file not found: ${rel}`);
     const key = this.norm(rel);
     this.overlay.set(key, content);
-    this.tracker.log({
-      type: "file_modify",
-      path: key,
-      details: { before, after: content },
-      status: "pending",
-    });
+    this.tracker.log({ type: "file_modify", path: key, details: { before, after: content }, status: "pending" });
     return `Staged update: ${key}`;
   }
 
   deleteFile(rel: string): string {
-    if (!this.config.tools.allowFileModification)
-      throw new Error("File deletion disabled");
+    if (!this.config.tools.allowFileModification) throw new Error("File deletion disabled");
     this.assertNotExcluded(rel, "delete_file");
     const before = this.getEffectiveText(rel);
-    if (before === undefined)
-      throw new Error(`delete_file: file not found: ${rel}`);
+    if (before === undefined) throw new Error(`delete_file: file not found: ${rel}`);
     const key = this.norm(rel);
     this.overlay.delete(key);
     this.deleted.add(key);
-    this.tracker.log({
-      type: "file_delete",
-      path: key,
-      details: { before },
-      status: "pending",
-    });
+    this.tracker.log({ type: "file_delete", path: key, details: { before }, status: "pending" });
     return `Staged delete: ${key}`;
   }
 
   createFolder(rel: string): string {
-    if (!this.config.tools.allowFolderCreation)
-      throw new Error("Folder creation disabled");
+    if (!this.config.tools.allowFolderCreation) throw new Error("Folder creation disabled");
     this.assertNotExcluded(rel, "create_folder");
     const key = this.norm(rel);
     this.resolveSafe(rel);
-    this.tracker.log({
-      type: "folder_create",
-      path: key,
-      details: { after: key },
-      status: "pending",
-    });
+    this.tracker.log({ type: "folder_create", path: key, details: { after: key }, status: "pending" });
     return `Staged folder: ${key}`;
   }
 
@@ -211,34 +192,21 @@ export class ToolExecutor {
         if (ent.isDirectory()) {
           lines.push(`${prefix}${ent.name}/`);
           if (recursive) walk(full, `${prefix}${ent.name}/`);
-        } else {
-          lines.push(`${prefix}${ent.name}`);
-        }
+        } else lines.push(`${prefix}${ent.name}`);
       }
     };
 
     if (fs.statSync(abs).isDirectory()) walk(abs, "");
     else lines.push(path.relative(this.config.codebasePath, abs));
-
     const out = lines.sort().join("\n");
-    this.tracker.log({
-      type: "code_analysis",
-      path: this.norm(rel),
-      details: { after: out, toolName: "list_files" },
-      status: "executed",
-    });
+    this.tracker.log({ type: "code_analysis", path: this.norm(rel), details: { after: out, toolName: "list_files" }, status: "executed" });
     return out || "(empty)";
   }
 
-  searchFiles(
-    rootRel: string,
-    globPattern: string,
-    contentQuery?: string,
-  ): string {
+  searchFiles(rootRel: string, globPattern: string, contentQuery?: string): string {
     this.assertNotExcluded(rootRel, "search_files");
     const rootAbs = this.resolveSafe(rootRel);
-    if (!fs.existsSync(rootAbs))
-      throw new Error(`search_files: root not found: ${rootRel}`);
+    if (!fs.existsSync(rootAbs)) throw new Error(`search_files: root not found: ${rootRel}`);
 
     const results: string[] = [];
     const regexFromGlob = (g: string): RegExp => {
@@ -251,51 +219,31 @@ export class ToolExecutor {
       return new RegExp(`^${escaped}$`, "i");
     };
     const nameRe = regexFromGlob(globPattern.replace(/\\\\/g, "/"));
-
     const walk = (dir: string) => {
       for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, ent.name);
-        const relP = path
-          .relative(this.config.codebasePath, full)
-          .split(path.sep)
-          .join("/");
+        const relP = path.relative(this.config.codebasePath, full).split(path.sep).join("/");
         if (this.excluded(relP)) continue;
         if (ent.isDirectory()) walk(full);
         else if (nameRe.test(relP) || nameRe.test(ent.name)) {
           if (contentQuery) {
             if (!isProbablyTextFile(full)) continue;
-            const text = fs.readFileSync(full, "utf8");
-            if (!text.includes(contentQuery)) continue;
+            if (!fs.readFileSync(full, "utf8").includes(contentQuery)) continue;
           }
           results.push(relP);
         }
       }
     };
-
     if (fs.statSync(rootAbs).isDirectory()) walk(rootAbs);
-    else {
-      const relP = path
-        .relative(this.config.codebasePath, rootAbs)
-        .split(path.sep)
-        .join("/");
-      results.push(relP);
-    }
-
+    else results.push(path.relative(this.config.codebasePath, rootAbs).split(path.sep).join("/"));
     const out = [...new Set(results)].sort().join("\n");
-    this.tracker.log({
-      type: "code_analysis",
-      path: this.norm(rootRel),
-      details: { after: out || "(no matches)", toolName: "search_files" },
-      status: "executed",
-    });
+    this.tracker.log({ type: "code_analysis", path: this.norm(rootRel), details: { after: out || "(no matches)", toolName: "search_files" }, status: "executed" });
     return out || "(no matches)";
   }
 
   analyzeCodebase(rootRel: string): string {
     const rootAbs = this.resolveSafe(rootRel);
-    if (!fs.existsSync(rootAbs))
-      throw new Error(`analyze_codebase: not found: ${rootRel}`);
-
+    if (!fs.existsSync(rootAbs)) throw new Error(`analyze_codebase: not found: ${rootRel}`);
     let files = 0;
     let dirs = 0;
     const walk = (dir: string) => {
@@ -303,49 +251,24 @@ export class ToolExecutor {
         const full = path.join(dir, ent.name);
         const relP = path.relative(this.config.codebasePath, full);
         if (this.excluded(relP)) continue;
-        if (ent.isDirectory()) {
-          dirs++;
-          walk(full);
-        } else {
-          files++;
-        }
+        if (ent.isDirectory()) { dirs++; walk(full); } else files++;
       }
     };
-    if (fs.statSync(rootAbs).isDirectory()) walk(rootAbs);
-    else files = 1;
-
+    if (fs.statSync(rootAbs).isDirectory()) walk(rootAbs); else files = 1;
     const summary = `Files: ${files} | Directories: ${dirs}`;
-    this.tracker.log({
-      type: "code_analysis",
-      path: this.norm(rootRel),
-      details: { after: summary, toolName: "analyze_codebase" },
-      status: "executed",
-    });
+    this.tracker.log({ type: "code_analysis", path: this.norm(rootRel), details: { after: summary, toolName: "analyze_codebase" }, status: "executed" });
     return summary;
   }
 
   queueShell(command: string): string {
-    if (!this.config.tools.allowShellExecution)
-      throw new Error("Shell execution disabled");
-    this.tracker.log({
-      type: "tool_execute",
-      path: "shell",
-      details: { command, toolName: "execute_shell" },
-      status: "pending",
-    });
+    if (!this.config.tools.allowShellExecution) throw new Error("Shell execution disabled");
+    this.tracker.log({ type: "tool_execute", path: "shell", details: { command, toolName: "execute_shell" }, status: "pending" });
     return `Shell queued: ${command}`;
   }
 
   skillRoots(): string[] {
-    const extra =
-      process.env.SKILLS_DIRS?.split(/[;]/)
-        .map((s) => s.trim())
-        .filter(Boolean) ?? [];
-    return [
-      ...extra,
-      path.join(homedir(), ".cursor/skills-cursor"),
-      path.join(homedir(), ".claude/skills"),
-    ];
+    const extra = process.env.SKILLS_DIRS?.split(/[;]/).map((s) => s.trim()).filter(Boolean) ?? [];
+    return [...extra, path.join(homedir(), ".cursor/skills-cursor"), path.join(homedir(), ".claude/skills")];
   }
 
   listSkills(): string {
@@ -355,38 +278,25 @@ export class ToolExecutor {
       const walk = (dir: string) => {
         for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
           const full = path.join(dir, ent.name);
-          if (ent.isDirectory()) walk(full);
-          else if (ent.name === "SKILL.md") lines.push(full);
+          if (ent.isDirectory()) walk(full); else if (ent.name === "SKILL.md") lines.push(full);
         }
       };
       walk(root);
     }
     const out = lines.sort().join("\n");
-    this.tracker.log({
-      type: "code_analysis",
-      path: "skills",
-      details: { after: out || "(none)", toolName: "list_skills" },
-      status: "executed",
-    });
+    this.tracker.log({ type: "code_analysis", path: "skills", details: { after: out || "(none)", toolName: "list_skills" }, status: "executed" });
     return out || "(none)";
   }
 
   readSkill(skillPath: string): string {
-    const abs = path.isAbsolute(skillPath)
-      ? path.normalize(skillPath)
-      : path.normalize(path.resolve(this.config.codebasePath, skillPath));
+    const abs = path.isAbsolute(skillPath) ? path.normalize(skillPath) : path.normalize(path.resolve(this.config.codebasePath, skillPath));
     const allowed = this.skillRoots().some((root) => {
       const r = path.resolve(root);
       return abs === r || abs.startsWith(r + path.sep);
     });
     if (!allowed) throw new Error("read_skill: outside skill roots");
     const text = fs.readFileSync(abs, "utf8");
-    this.tracker.log({
-      type: "code_analysis",
-      path: abs,
-      details: { after: text, toolName: "read_skill" },
-      status: "executed",
-    });
+    this.tracker.log({ type: "code_analysis", path: abs, details: { after: text, toolName: "read_skill" }, status: "executed" });
     return text;
   }
 
@@ -394,60 +304,73 @@ export class ToolExecutor {
     const errors: string[] = [];
     const all = [...this.tracker.getActions()];
 
-    for (const a of all.filter(
-      (x) => x.type === "folder_create" && x.status === "approved",
-    )) {
+    for (const a of all.filter((x) => x.type === "folder_create" && x.status === "approved")) {
       try {
-        const target = this.resolveSafe(a.path);
+        const target = this.resolveSafeForMutation(a.path);
         fs.mkdirSync(target, { recursive: true });
-      } catch (e) {
-        errors.push(String(e));
-      }
+        // Verify after creation too; mkdir recursive must not traverse a parent
+        // that was redirected by a symlink between validation and application.
+        this.resolveSafeForMutation(a.path);
+      } catch (e) { errors.push(String(e)); }
     }
 
     const fileOps = all
-      .filter(
-        (a) =>
-          (a.type === "file_create" ||
-            a.type === "file_modify" ||
-            a.type === "file_delete") &&
-          a.status === "approved",
-      )
+      .filter((a) => (a.type === "file_create" || a.type === "file_modify" || a.type === "file_delete") && a.status === "approved")
       .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
-
     const lastByPath = new Map<string, ActionLog>();
     for (const a of fileOps) lastByPath.set(this.norm(a.path), a);
 
     for (const [p, a] of lastByPath) {
       try {
-        const target = this.resolveSafe(p);
-        if (a.type === "file_delete")
+        if (a.type === "file_delete") {
+          const target = this.resolveSafeForMutation(p);
           fs.rmSync(target, { force: true });
-        else {
-          fs.mkdirSync(path.dirname(target), { recursive: true });
-          // Resolve again immediately before the write because a parent
-          // directory may have changed since the operation was staged.
-          const safeTarget = this.resolveSafe(p);
-          fs.writeFileSync(safeTarget, a.details.after ?? "", "utf8");
+        } else {
+          // Resolve and create parents one segment at a time, checking every
+          // step to avoid recursive mkdir following an external symlink.
+          const parentRel = path.posix.dirname(p);
+          if (parentRel !== ".") {
+            const segments = parentRel.split("/");
+            let current = "";
+            for (const segment of segments) {
+              current = current ? `${current}/${segment}` : segment;
+              const dir = this.resolveSafeForMutation(current);
+              if (fs.existsSync(dir)) {
+                if (!fs.statSync(dir).isDirectory()) throw new Error(`Not a directory: ${current}`);
+              } else {
+                fs.mkdirSync(dir);
+              }
+              this.resolveSafeForMutation(current);
+            }
+          }
+          const target = this.resolveSafeForMutation(p);
+          fs.writeFileSync(target, a.details.after ?? "", "utf8");
         }
-      } catch (e) {
-        errors.push(String(e));
-      }
+      } catch (e) { errors.push(String(e)); }
     }
 
-    for (const a of all.filter(
-      (x) => x.type === "tool_execute" && x.status === "approved",
-    )) {
+    for (const a of all.filter((x) => x.type === "tool_execute" && x.status === "approved")) {
       const cmd = a.details.command;
       if (!cmd) continue;
+      const timeoutMs = this.shellTimeoutMs;
       const r = spawnSync(cmd, {
         shell: true,
         cwd: this.config.codebasePath,
         encoding: "utf8",
         maxBuffer: 16 * 1024 * 1024,
+        timeout: timeoutMs,
+        killSignal: "SIGTERM",
       });
-      if (r.status && r.status !== 0)
-        errors.push(`shell exit ${r.status}: ${cmd}`);
+
+      if (r.error && "code" in r.error && r.error.code === "ETIMEDOUT") {
+        errors.push(`shell timeout after ${timeoutMs}ms: ${cmd}`);
+      } else if (r.error) {
+        errors.push(`shell execution error (${r.error.message}): ${cmd}`);
+      } else if (r.signal) {
+        errors.push(`shell terminated by signal ${r.signal}: ${cmd}`);
+      } else if (r.status !== 0) {
+        errors.push(`shell exit ${r.status ?? "unknown"}: ${cmd}`);
+      }
     }
 
     return { errors };
