@@ -6,21 +6,8 @@ import type { AgentConfig, ActionLog } from "./types";
 import { ActionTracker } from "./action-tracker";
 
 const TEXT_EXT = new Set([
-  ".ts",
-  ".tsx",
-  ".js",
-  ".jsx",
-  ".mjs",
-  ".cjs",
-  ".json",
-  ".md",
-  ".mdx",
-  ".css",
-  ".html",
-  ".yml",
-  ".yaml",
-  ".toml",
-  ".txt",
+  ".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs", ".json", ".md", ".mdx",
+  ".css", ".html", ".yml", ".yaml", ".toml", ".txt",
 ]);
 
 function isProbablyTextFile(filePath: string): boolean {
@@ -39,14 +26,52 @@ export class ToolExecutor {
     private readonly config: AgentConfig,
   ) {}
 
+  /**
+   * Resolve a workspace-relative path while enforcing both lexical and
+   * filesystem containment. For a non-existent write target, validate the
+   * nearest existing ancestor so a symlinked parent cannot escape the root.
+   */
   private resolveSafe(rel: string): string {
-    const abs = path.resolve(this.config.codebasePath, rel);
     const root = path.resolve(this.config.codebasePath);
+    const abs = path.resolve(root, rel);
     const relCheck = path.relative(root, abs);
-    if (relCheck.startsWith("..") || path.isAbsolute(relCheck)) {
+    if (relCheck === ".." || relCheck.startsWith(`..${path.sep}`) || path.isAbsolute(relCheck)) {
       throw new Error(`Path escapes workspace: ${rel}`);
     }
-    return abs;
+
+    const realRoot = fs.realpathSync(root);
+    let existing = abs;
+    const missing: string[] = [];
+    while (!fs.existsSync(existing)) {
+      const parent = path.dirname(existing);
+      if (parent === existing) throw new Error(`Cannot resolve workspace path: ${rel}`);
+      missing.unshift(path.basename(existing));
+      existing = parent;
+    }
+
+    const realExisting = fs.realpathSync(existing);
+    const realRelative = path.relative(realRoot, realExisting);
+    if (
+      realRelative === ".." ||
+      realRelative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(realRelative)
+    ) {
+      throw new Error(`Path resolves outside workspace: ${rel}`);
+    }
+
+    // Check the resolved destination as well, including any symlink at the
+    // final component. For missing targets, reattach only non-existing names
+    // to the validated real ancestor.
+    const resolved = missing.reduce((base, segment) => path.join(base, segment), realExisting);
+    const finalRelative = path.relative(realRoot, resolved);
+    if (
+      finalRelative === ".." ||
+      finalRelative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(finalRelative)
+    ) {
+      throw new Error(`Path resolves outside workspace: ${rel}`);
+    }
+    return resolved;
   }
 
   private excluded(relPath: string): boolean {
@@ -161,6 +186,7 @@ export class ToolExecutor {
       throw new Error("Folder creation disabled");
     this.assertNotExcluded(rel, "create_folder");
     const key = this.norm(rel);
+    this.resolveSafe(rel);
     this.tracker.log({
       type: "folder_create",
       path: key,
@@ -217,14 +243,14 @@ export class ToolExecutor {
     const results: string[] = [];
     const regexFromGlob = (g: string): RegExp => {
       const escaped = g
-        .replace(/[.+^${}()|[\]\\]/g, "\\$&")
-        .replace(/\*\*/g, "§§")
-        .replace(/\*/g, "[^/\\\\]*")
+        .replace(/[.+^${}()|[\\]\\\\]/g, "\\$&")
+        .replace(/\\*\\*/g, "§§")
+        .replace(/\\*/g, "[^/\\\\]*")
         .replace(/§§/g, ".*")
-        .replace(/\?/g, ".");
+        .replace(/\\?/g, ".");
       return new RegExp(`^${escaped}$`, "i");
     };
-    const nameRe = regexFromGlob(globPattern.replace(/\\/g, "/"));
+    const nameRe = regexFromGlob(globPattern.replace(/\\\\/g, "/"));
 
     const walk = (dir: string) => {
       for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -309,6 +335,7 @@ export class ToolExecutor {
     });
     return `Shell queued: ${command}`;
   }
+
   skillRoots(): string[] {
     const extra =
       process.env.SKILLS_DIRS?.split(/[;]/)
@@ -371,7 +398,8 @@ export class ToolExecutor {
       (x) => x.type === "folder_create" && x.status === "approved",
     )) {
       try {
-        fs.mkdirSync(this.resolveSafe(a.path), { recursive: true });
+        const target = this.resolveSafe(a.path);
+        fs.mkdirSync(target, { recursive: true });
       } catch (e) {
         errors.push(String(e));
       }
@@ -392,12 +420,15 @@ export class ToolExecutor {
 
     for (const [p, a] of lastByPath) {
       try {
+        const target = this.resolveSafe(p);
         if (a.type === "file_delete")
-          fs.rmSync(this.resolveSafe(p), { force: true });
+          fs.rmSync(target, { force: true });
         else {
-          const target = this.resolveSafe(p);
           fs.mkdirSync(path.dirname(target), { recursive: true });
-          fs.writeFileSync(target, a.details.after ?? "", "utf8");
+          // Resolve again immediately before the write because a parent
+          // directory may have changed since the operation was staged.
+          const safeTarget = this.resolveSafe(p);
+          fs.writeFileSync(safeTarget, a.details.after ?? "", "utf8");
         }
       } catch (e) {
         errors.push(String(e));
@@ -422,8 +453,8 @@ export class ToolExecutor {
     return { errors };
   }
 
-  clearStaging():void{
-    this.overlay.clear()
-    this.deleted.clear()
+  clearStaging(): void {
+    this.overlay.clear();
+    this.deleted.clear();
   }
 }
