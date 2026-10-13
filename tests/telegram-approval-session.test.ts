@@ -1,39 +1,45 @@
-import { describe, expect, test } from "bun:test";
+import { afterEach, describe, expect, test } from "bun:test";
 import { ActionTracker } from "../modes/agent/action-tracker";
 import { ToolExecutor } from "../modes/agent/tool-executor";
 import { defaultAgentConfig } from "../modes/agent/types";
-import { getApprovalSessionForCallback, type ApprovalSession } from "../modes/telegram/approval-session";
+import { approvalSessions, getApprovalSessionForCallback, type ApprovalSession } from "../modes/telegram/approval-session";
 
-function session(id: string): ApprovalSession {
+const chatId = 987654321;
+
+function session(id: string, messageId = 123): ApprovalSession {
   return {
     id,
     tracker: new ActionTracker(),
     executor: new ToolExecutor(new ActionTracker(), defaultAgentConfig()),
     pending: [],
-    messageId: 123,
+    messageId,
   };
 }
 
+afterEach(() => {
+  approvalSessions.delete(chatId);
+});
+
 describe("Telegram approval callback binding", () => {
-  test("only resolves the current session id", () => {
-    const current = session("new-session");
-    // Mirrors lookup after a second run replaced/owns the current map entry.
-    const sessions = new Map<number, ApprovalSession>([[7, current]]);
-    expect(sessions.get(7)?.id).toBe("new-session");
-    expect("old-session").not.toBe(sessions.get(7)?.id);
+  test("rejects a callback for a superseded session", () => {
+    approvalSessions.set(chatId, session("new-session"));
+    expect(getApprovalSessionForCallback(chatId, "old-session", 123)).toBeUndefined();
   });
 
-  test("rejects a callback whose session id is stale", () => {
-    const current = session("current");
-    expect(getApprovalSessionForCallback(7, "superseded", 123)).toBeUndefined();
-    expect(current.id).toBe("current");
+  test("resolves only the active session id", () => {
+    const current = session("current-session");
+    approvalSessions.set(chatId, current);
+    expect(getApprovalSessionForCallback(chatId, "current-session", 123)).toBe(current);
   });
 
-  test("rejects a callback attached to a different approval message", () => {
-    const current = session("current");
-    // A message id mismatch must never satisfy the callback guard.
-    const actual = current.id === "current" && current.messageId === 123;
-    expect(actual).toBe(true);
-    expect(current.messageId).not.toBe(456);
+  test("rejects a callback from a different approval message", () => {
+    approvalSessions.set(chatId, session("current-session", 123));
+    expect(getApprovalSessionForCallback(chatId, "current-session", 456)).toBeUndefined();
+  });
+
+  test("rejects callbacks after the session has been consumed", () => {
+    approvalSessions.set(chatId, session("consumed-session"));
+    approvalSessions.delete(chatId);
+    expect(getApprovalSessionForCallback(chatId, "consumed-session", 123)).toBeUndefined();
   });
 });
