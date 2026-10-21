@@ -289,10 +289,15 @@ export class ToolExecutor {
   }
 
   readSkill(skillPath: string): string {
-    const abs = path.isAbsolute(skillPath) ? path.normalize(skillPath) : path.normalize(path.resolve(this.config.codebasePath, skillPath));
+    const abs = path.resolve(path.isAbsolute(skillPath) ? skillPath : path.resolve(this.config.codebasePath, skillPath));
     const allowed = this.skillRoots().some((root) => {
       const r = path.resolve(root);
-      return abs === r || abs.startsWith(r + path.sep);
+      if (abs !== r && !abs.startsWith(r + path.sep)) return false;
+      try {
+        return isInside(fs.realpathSync(r), fs.realpathSync(abs));
+      } catch {
+        return false;
+      }
     });
     if (!allowed) throw new Error("read_skill: outside skill roots");
     const text = fs.readFileSync(abs, "utf8");
