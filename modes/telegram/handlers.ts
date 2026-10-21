@@ -4,7 +4,7 @@ import { isOwner } from "./auth";
 import { clip, commandArg } from "./text";
 import { runAgent, runAsk, runPlanSteps } from "./agent-run";
 import { generatePlan } from "../plan/planner";
-import { planKeyboard, planMessage, planSessions, refreshPlanUi, type PlanSession } from "./plan-session";
+import { getPlanSessionForCallback, planKeyboard, planMessage, planSessions, refreshPlanUi, type PlanSession } from "./plan-session";
 import { approvalDiff, approvalSessions, getApprovalSessionForCallback } from "./approval-session";
 
 
@@ -50,14 +50,15 @@ export function registerHandlers(bot: Telegraf) {
         void (async () => {
             const plan = await generatePlan(goal)
             const session: PlanSession = { plan, selected: new Set(plan.steps.map((s) => s.id)) }
-            await ctx.reply(planMessage(session), { parse_mode: "Markdown", ...planKeyboard(session) });
+            const message = await ctx.reply(planMessage(session), { parse_mode: "Markdown", ...planKeyboard(session) });
+            session.messageId = message.message_id;
             planSessions.set(ctx.chat.id, session);
         })().catch(console.error)
     });
 
     bot.action(/^plan_toggle:(.+)$/, async (ctx) => {
         if (!isOwner(ctx.chat!.id)) return ctx.answerCbQuery();
-        const s = planSessions.get(ctx.chat!.id);
+        const s = getPlanSessionForCallback(ctx.chat!.id, ctx.callbackQuery.message?.message_id);
         if (!s) return ctx.answerCbQuery();
 
         const id = ctx.match[1]!;
@@ -70,7 +71,7 @@ export function registerHandlers(bot: Telegraf) {
 
     bot.action('plan_all', async (ctx) => {
         if (!isOwner(ctx.chat!.id)) return ctx.answerCbQuery();
-        const s = planSessions.get(ctx.chat!.id);
+        const s = getPlanSessionForCallback(ctx.chat!.id, ctx.callbackQuery.message?.message_id);
         if (!s) return ctx.answerCbQuery();
         for (const step of s.plan.steps) s.selected.add(step.id);
         await refreshPlanUi(ctx, s);
@@ -79,7 +80,7 @@ export function registerHandlers(bot: Telegraf) {
 
     bot.action('plan_none', async (ctx) => {
         if (!isOwner(ctx.chat!.id)) return ctx.answerCbQuery();
-        const s = planSessions.get(ctx.chat!.id);
+        const s = getPlanSessionForCallback(ctx.chat!.id, ctx.callbackQuery.message?.message_id);
         if (!s) return ctx.answerCbQuery();
         s.selected.clear();
         await refreshPlanUi(ctx, s);
@@ -88,7 +89,7 @@ export function registerHandlers(bot: Telegraf) {
 
     bot.action('plan_proceed', async (ctx) => {
         if (!isOwner(ctx.chat!.id)) return ctx.answerCbQuery();
-        const s = planSessions.get(ctx.chat!.id);
+        const s = getPlanSessionForCallback(ctx.chat!.id, ctx.callbackQuery.message?.message_id);
         if (!s) return ctx.answerCbQuery();
 
         const steps = s.plan.steps.filter((step) => s.selected.has(step.id));

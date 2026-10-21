@@ -5,9 +5,15 @@ import type { Plan } from '../plan/types.ts';
 export interface PlanSession {
   plan: Plan;
   selected: Set<string>;
+  messageId?: number;
 }
 
 export const planSessions = new Map<number, PlanSession>();
+
+export function getPlanSessionForCallback(chatId: number, messageId?: number): PlanSession | undefined {
+  const session = planSessions.get(chatId);
+  return messageId !== undefined && session?.messageId === messageId ? session : undefined;
+}
 
 export function planMessage(session: PlanSession): string {
   const lines = session.plan.steps.map((step, i) => {
