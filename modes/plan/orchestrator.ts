@@ -36,6 +36,7 @@ export async function runPlanMode(): Promise<void> {
     message: `Execute ${selected.length} step(s)`,
     initialValue: true,
   });
+  if (isCancel(proceed) || !proceed) return;
 
   const config = defaultAgentConfig();
   const tracker = new ActionTracker();
