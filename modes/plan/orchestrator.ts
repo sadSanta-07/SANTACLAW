@@ -58,7 +58,7 @@ export async function runPlanMode(): Promise<void> {
 
     const r = await agent.generate({prompt:stepPrompt(plan.goal , step)})
 
-    if(r.text) return console.log(renderTerminalMarkdown(r.text))
+    if(r.text) console.log(renderTerminalMarkdown(r.text))
 
   }
 
