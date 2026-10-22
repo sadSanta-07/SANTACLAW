@@ -8,20 +8,29 @@ export async function runTelegramMode() {
     const ownerId = process.env.TELEGRAM_OWNER_ID;
 
     const bot = new Telegraf(token!);
-      registerHandlers(bot)
+    registerHandlers(bot);
 
     await bot.telegram.sendMessage(ownerId!, WELCOME, { parse_mode: "Markdown" });
     console.log(chalk.green("Sent welcome message to Telegram.\n"));
 
-    bot.launch();
-    console.log(chalk.green("Telegram bot is running. Press Ctrl+C to stop.\n"));
-
-    await new Promise<void>((resolve) => {
-        const stop = () => {
-            bot.stop("SIGINT");
-            resolve();
-        };
-        process.once("SIGINT", stop);
-        process.once("SIGTERM", stop);
+    let stopping: Promise<void> | undefined;
+    const stop = (signal: NodeJS.Signals) => {
+        if (!stopping) stopping = Promise.resolve().then(() => bot.stop(signal));
+        return stopping;
+    };
+    const waitForStop = new Promise<void>((resolve) => {
+        process.once("SIGINT", () => { void stop("SIGINT").finally(resolve); });
+        process.once("SIGTERM", () => { void stop("SIGTERM").finally(resolve); });
     });
+
+    try {
+        const launch = bot.launch();
+        console.log(chalk.green("Telegram bot is running. Press Ctrl+C to stop.\n"));
+        await Promise.race([launch, waitForStop]);
+        if (stopping) await stopping;
+        else await launch;
+    } catch (error) {
+        await stop("SIGTERM");
+        throw error;
+    }
 }
