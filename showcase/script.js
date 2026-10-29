@@ -3,10 +3,12 @@ cd SANTACLAW
 bun install
 export OPENROUTER_API_KEY="your_key"
 bun run wakeup`;
-const dockerCommands = `docker pull sahilsingh94/santaclaw:latest
+const dockerCommands = `git clone https://github.com/sadSanta-07/SANTACLAW.git
+cd SANTACLAW
+docker build -t santaclaw:latest .
 docker run -it \\
   -e OPENROUTER_API_KEY="your_key" \\
-  sahilsingh94/santaclaw:latest`;
+  santaclaw:latest`;
 
 document.getElementById("year").textContent = String(new Date().getFullYear());
 
