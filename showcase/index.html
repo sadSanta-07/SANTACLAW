@@ -167,13 +167,15 @@
           </div>
           <div class="code-panel" id="panel-docker" role="tabpanel" aria-labelledby="tab-docker" hidden>
             <div class="code-title"><span><i></i><i></i><i></i></span><span>TERMINAL — DOCKER</span><button class="copy-button" data-copy="docker" type="button" aria-label="Copy Docker commands">Copy <span>↗</span></button></div>
-            <pre><code><span class="code-comment"># Pull the published image</span>
-<span class="code-command">docker pull</span> sahilsingh94/santaclaw:latest
+            <pre><code><span class="code-comment"># Clone the repo, then build the image</span>
+<span class="code-command">git clone</span> https://github.com/sadSanta-07/SANTACLAW.git
+<span class="code-command">cd</span> SANTACLAW
+<span class="code-command">docker build -t santaclaw:latest .</span>
 
 <span class="code-comment"># Run interactively with your key</span>
 <span class="code-command">docker run -it</span> \
   -e OPENROUTER_API_KEY=<span class="code-string">"your_key"</span> \
-  sahilsingh94/santaclaw:latest</code></pre>
+  santaclaw:latest</code></pre>
           </div>
           <div class="code-footnote"><span>↳ Add optional Telegram / web-search keys when needed.</span><span class="copy-feedback" aria-live="polite"></span></div>
           <a class="docs-link" href="https://github.com/sadSanta-07/SANTACLAW#quick-start" target="_blank" rel="noreferrer">Read full setup instructions <span>↗</span></a>
